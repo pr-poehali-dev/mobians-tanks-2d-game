@@ -3,8 +3,9 @@ import MainMenu from '@/components/game/MainMenu';
 import GameEngine from '@/components/game/GameEngine';
 import SettingsScreen, { GameSettings } from '@/components/game/SettingsScreen';
 import ResultScreen from '@/components/game/ResultScreen';
+import LevelMap from '@/components/game/LevelMap';
 
-type Screen = 'menu' | 'game' | 'settings' | 'result';
+type Screen = 'menu' | 'levelmap' | 'game' | 'settings' | 'result';
 
 interface ResultData {
   score: number;
@@ -28,6 +29,7 @@ const Index: React.FC = () => {
   const [screen, setScreen] = useState<Screen>('menu');
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [currentLevel, setCurrentLevel] = useState(1);
+  const [maxUnlocked, setMaxUnlocked] = useState(1);
   const [result, setResult] = useState<ResultData | null>(null);
   const [gameKey, setGameKey] = useState(0);
 
@@ -48,11 +50,14 @@ const Index: React.FC = () => {
 
   const handleVictory = useCallback((score: number, kills: number, level: number) => {
     setResult({ score, kills, level, victory: true });
+    setMaxUnlocked(prev => Math.max(prev, level + 1));
     setTimeout(() => setScreen('result'), 800);
   }, []);
 
   const handleNextLevel = () => {
-    setCurrentLevel(l => l + 1);
+    const next = currentLevel + 1;
+    setCurrentLevel(next);
+    setMaxUnlocked(prev => Math.max(prev, next));
     setGameKey(k => k + 1);
     setScreen('game');
   };
@@ -63,7 +68,11 @@ const Index: React.FC = () => {
   };
 
   const handleStart = () => {
-    setCurrentLevel(1);
+    setScreen('levelmap');
+  };
+
+  const handleSelectLevel = (level: number) => {
+    setCurrentLevel(level);
     setGameKey(k => k + 1);
     setScreen('game');
   };
@@ -89,6 +98,16 @@ const Index: React.FC = () => {
               onStart={handleStart}
               onSettings={() => setScreen('settings')}
               onQuit={() => setScreen('menu')}
+            />
+          </div>
+        )}
+
+        {screen === 'levelmap' && (
+          <div className="w-full h-full animate-fade-in">
+            <LevelMap
+              maxUnlocked={maxUnlocked}
+              onSelectLevel={handleSelectLevel}
+              onBack={() => setScreen('menu')}
             />
           </div>
         )}
@@ -126,7 +145,7 @@ const Index: React.FC = () => {
               victory={result.victory}
               onNextLevel={handleNextLevel}
               onRetry={handleRetry}
-              onMenu={() => setScreen('menu')}
+              onMenu={() => setScreen('levelmap')}
             />
           </div>
         )}

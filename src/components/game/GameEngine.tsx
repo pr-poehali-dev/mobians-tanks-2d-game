@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { getLevelTheme, type LevelTheme } from './levelThemes';
 
 export interface Tank {
   id: string;
@@ -66,22 +67,6 @@ const TILE = 32;
 const SPEED = 2.5;
 const BULLET_SPEED = 7;
 const BULLET_DAMAGE = 25;
-const COLORS = {
-  player: '#4a8a2a',
-  playerLight: '#6ab040',
-  enemy: '#8a2a2a',
-  enemyLight: '#b04040',
-  wall: '#3a4a5a',
-  wallDark: '#2a3a4a',
-  ground: '#1a2830',
-  groundGrid: '#1f3038',
-  bullet: '#f5c842',
-  bulletEnemy: '#e05050',
-  explosion1: '#f5c842',
-  explosion2: '#e07820',
-  explosion3: '#e04040',
-  bg: '#0d1117',
-};
 
 function generateLevel(level: number, W: number, H: number) {
   const walls: Wall[] = [];
@@ -145,6 +130,126 @@ function rectCircle(rx: number, ry: number, rw: number, rh: number, cx: number, 
   return Math.hypot(cx - nearX, cy - nearY) < cr;
 }
 
+// Draw themed ground tile decorations
+function drawGroundDecoration(ctx: CanvasRenderingContext2D, theme: LevelTheme, W: number, H: number, seed: number) {
+  const rng = (n: number) => ((Math.sin(n * 127.1 + seed * 311.7) * 43758.5453) % 1 + 1) % 1;
+
+  if (theme.id === 'forest') {
+    ctx.fillStyle = theme.groundDetail;
+    for (let i = 0; i < 30; i++) {
+      const x = rng(i * 3) * W;
+      const y = rng(i * 3 + 1) * H;
+      const s = 4 + rng(i * 3 + 2) * 6;
+      ctx.fillRect(x, y, s, s);
+    }
+  } else if (theme.id === 'desert') {
+    ctx.fillStyle = theme.groundDetail;
+    for (let i = 0; i < 20; i++) {
+      const x = rng(i * 5) * W;
+      const y = rng(i * 5 + 1) * H;
+      ctx.fillRect(x, y, 8 + rng(i * 5 + 2) * 20, 2);
+    }
+  } else if (theme.id === 'base') {
+    ctx.fillStyle = theme.groundDetail;
+    for (let gx = TILE * 2; gx < W - TILE * 2; gx += TILE * 2) {
+      ctx.fillRect(gx, TILE, 2, H - TILE * 2);
+      ctx.fillRect(TILE, gx, W - TILE * 2, 2);
+    }
+  } else if (theme.id === 'volcano') {
+    ctx.fillStyle = theme.groundDetail;
+    for (let i = 0; i < 15; i++) {
+      const x = rng(i * 7) * W;
+      const y = rng(i * 7 + 1) * H;
+      const s = 6 + rng(i * 7 + 2) * 10;
+      ctx.fillRect(x - s / 2, y - s / 4, s, s / 2);
+    }
+    ctx.fillStyle = '#e04010';
+    ctx.globalAlpha = 0.15;
+    for (let i = 0; i < 5; i++) {
+      const x = rng(i * 11) * W;
+      const y = rng(i * 11 + 1) * H;
+      ctx.fillRect(x, y, 4 + rng(i * 11 + 2) * 8, 2);
+    }
+    ctx.globalAlpha = 1;
+  } else if (theme.id === 'snow') {
+    ctx.fillStyle = '#d0e8f8';
+    ctx.globalAlpha = 0.12;
+    for (let i = 0; i < 25; i++) {
+      const x = rng(i * 9) * W;
+      const y = rng(i * 9 + 1) * H;
+      const s = 2 + rng(i * 9 + 2) * 4;
+      ctx.fillRect(x, y, s, s);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawWallThemed(ctx: CanvasRenderingContext2D, w: Wall, theme: LevelTheme) {
+  ctx.fillStyle = theme.wall;
+  ctx.fillRect(w.x, w.y, w.w, w.h);
+
+  if (theme.id === 'forest') {
+    ctx.fillStyle = theme.wallDark;
+    for (let row = 0; row * 8 < w.h; row++) {
+      for (let col = 0; col * 8 < w.w; col++) {
+        if ((row + col) % 2 === 0) ctx.fillRect(w.x + col * 8, w.y + row * 8, 8, 8);
+      }
+    }
+    ctx.fillStyle = theme.wallAccent;
+    for (let i = 0; i * 16 < w.w; i++) {
+      ctx.fillRect(w.x + i * 16, w.y, 6, 4);
+      ctx.fillRect(w.x + i * 16, w.y + w.h - 4, 6, 4);
+    }
+  } else if (theme.id === 'desert') {
+    ctx.fillStyle = theme.wallDark;
+    for (let row = 0; row * 10 < w.h; row++) {
+      const offset = row % 2 === 0 ? 0 : 10;
+      for (let col = -1; col * 20 < w.w + 20; col++) {
+        ctx.fillRect(w.x + col * 20 + offset, w.y + row * 10, 18, 8);
+      }
+    }
+    ctx.fillStyle = theme.wallAccent;
+    ctx.fillRect(w.x, w.y, w.w, 3);
+  } else if (theme.id === 'base') {
+    ctx.fillStyle = theme.wallDark;
+    ctx.fillRect(w.x + 2, w.y + 2, w.w - 4, w.h - 4);
+    ctx.fillStyle = theme.wallAccent;
+    ctx.fillRect(w.x, w.y, w.w, 4);
+    ctx.fillRect(w.x, w.y, 4, w.h);
+    for (let i = 8; i < w.w - 4; i += 16) {
+      ctx.fillStyle = '#5080a0';
+      ctx.fillRect(w.x + i, w.y + 2, 8, 8);
+    }
+  } else if (theme.id === 'volcano') {
+    ctx.fillStyle = theme.wallDark;
+    for (let row = 0; row * 8 < w.h; row++) {
+      for (let col = 0; col * 8 < w.w; col++) {
+        if (Math.sin(row * 3 + col * 7) > 0.3) ctx.fillRect(w.x + col * 8, w.y + row * 8, 8, 8);
+      }
+    }
+    ctx.fillStyle = '#e04010';
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(w.x, w.y + w.h - 4, w.w, 4);
+    ctx.globalAlpha = 1;
+  } else if (theme.id === 'snow') {
+    ctx.fillStyle = theme.wallDark;
+    for (let row = 0; row * 8 < w.h; row++) {
+      const offset = row % 2 === 0 ? 0 : 8;
+      for (let col = -1; col * 16 < w.w + 16; col++) {
+        ctx.fillRect(w.x + col * 16 + offset, w.y + row * 8, 14, 6);
+      }
+    }
+    ctx.fillStyle = '#d0e8f8';
+    ctx.globalAlpha = 0.4;
+    ctx.fillRect(w.x, w.y, w.w, 4);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.strokeStyle = theme.wallAccent;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(w.x, w.y, w.w, w.h);
+}
+
 const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVictory, settings, level }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<GameState | null>(null);
@@ -153,6 +258,7 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
   const lastTimeRef = useRef<number>(0);
   const bulletIdRef = useRef(0);
   const explosionIdRef = useRef(0);
+  const theme = getLevelTheme(level);
 
   const [hpDisplay, setHpDisplay] = useState(100);
   const [scoreDisplay, setScoreDisplay] = useState(0);
@@ -221,7 +327,6 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
     const player = s.tanks.find(t => t.isPlayer);
     if (!player) return;
 
-    // Player input
     let moved = false;
     if (keys.has('ArrowLeft') || keys.has('KeyA')) { player.rotation -= 3; }
     if (keys.has('ArrowRight') || keys.has('KeyD')) { player.rotation += 3; }
@@ -246,10 +351,8 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
     }
     if (player.shootCooldown > 0) player.shootCooldown--;
 
-    // Move tanks
     for (const tank of s.tanks) {
       if (!tank.isPlayer) {
-        // AI logic
         tank.aiTimer--;
         if (tank.aiTimer <= 0) {
           tank.aiTimer = 60 + Math.random() * 120;
@@ -276,9 +379,7 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
           const dy = player.y - tank.y;
           const angleToPlayer = Math.atan2(dy, dx) * 180 / Math.PI + 90;
           const aimDiff = Math.abs(((angleToPlayer - tank.rotation + 540) % 360) - 180);
-          if (aimDiff < 15 && dist < 500) {
-            shoot(tank, s);
-          }
+          if (aimDiff < 15 && dist < 500) shoot(tank, s);
         }
         if (tank.shootCooldown > 0) tank.shootCooldown--;
       }
@@ -290,24 +391,19 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
       const wallY = s.walls.some(w => rectCircle(w.x, w.y, w.w, w.h, tank.x, ny, r));
       if (!wallX) tank.x = nx; else tank.vx = 0;
       if (!wallY) tank.y = ny; else tank.vy = 0;
-
-      // Clamp
       tank.x = Math.max(50, Math.min(width - 50, tank.x));
       tank.y = Math.max(50, Math.min(height - 50, tank.y));
     }
 
-    // Update bullets
     s.bullets = s.bullets.filter(b => {
       b.x += b.vx;
       b.y += b.vy;
       b.life--;
       if (b.life <= 0) return false;
 
-      // Wall collision
       const hitWall = s.walls.some(w => b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h);
       if (hitWall) { spawnExplosion(b.x, b.y); return false; }
 
-      // Tank collision
       for (const tank of s.tanks) {
         if (tank.isPlayer === b.fromPlayer) continue;
         const dist = Math.hypot(b.x - tank.x, b.y - tank.y);
@@ -317,10 +413,7 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
           if (tank.hp <= 0) {
             spawnExplosion(tank.x, tank.y, true);
             s.tanks = s.tanks.filter(t => t.id !== tank.id);
-            if (!tank.isPlayer) {
-              s.score += 100;
-              s.killCount++;
-            }
+            if (!tank.isPlayer) { s.score += 100; s.killCount++; }
           }
           return false;
         }
@@ -328,13 +421,8 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
       return true;
     });
 
-    // Update explosions
-    s.explosions = s.explosions.filter(e => {
-      e.frame++;
-      return e.frame < e.maxFrames;
-    });
+    s.explosions = s.explosions.filter(e => { e.frame++; return e.frame < e.maxFrames; });
 
-    // Check game over
     if (!s.tanks.find(t => t.isPlayer)) {
       s.gameOver = true;
       onGameOver(s.score, s.killCount, s.level);
@@ -344,90 +432,69 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
       onVictory(s.score + 500, s.killCount, s.level);
     }
 
-    // Update UI
     setHpDisplay(player.hp);
     setScoreDisplay(s.score);
     setKillDisplay(s.killCount);
   }, [onGameOver, onVictory, width, height]);
 
-  const drawTank = (ctx: CanvasRenderingContext2D, tank: Tank) => {
+  const drawTank = (ctx: CanvasRenderingContext2D, tank: Tank, t: LevelTheme) => {
     ctx.save();
     ctx.translate(tank.x, tank.y);
     ctx.rotate((tank.rotation * Math.PI) / 180);
-    const s = tank.isPlayer ? 1 : 1;
-    const c = tank.isPlayer ? COLORS.player : COLORS.enemy;
-    const cl = tank.isPlayer ? COLORS.playerLight : COLORS.enemyLight;
-    // Tracks
-    ctx.fillStyle = tank.isPlayer ? '#3a5a1a' : '#5a1a1a';
-    ctx.fillRect(-13 * s, -11 * s, 5 * s, 22 * s);
-    ctx.fillRect(8 * s, -11 * s, 5 * s, 22 * s);
-    // Track lines
-    ctx.fillStyle = tank.isPlayer ? '#2a4a0a' : '#4a0a0a';
+    const c = tank.isPlayer ? t.playerColor : t.enemyColor;
+    const cl = tank.isPlayer ? t.playerLight : t.enemyLight;
+    const trackDark = tank.isPlayer ? (t.id === 'forest' ? '#2a4a0a' : '#2a4060') : '#4a0a0a';
+    const trackBase = tank.isPlayer ? (t.id === 'forest' ? '#3a5a1a' : '#3a5060') : '#5a1a1a';
+
+    ctx.fillStyle = trackBase;
+    ctx.fillRect(-13, -11, 5, 22);
+    ctx.fillRect(8, -11, 5, 22);
+    ctx.fillStyle = trackDark;
     for (let i = -8; i <= 8; i += 4) {
-      ctx.fillRect(-13 * s, i * s, 5 * s, 2 * s);
-      ctx.fillRect(8 * s, i * s, 5 * s, 2 * s);
+      ctx.fillRect(-13, i, 5, 2);
+      ctx.fillRect(8, i, 5, 2);
     }
-    // Hull
     ctx.fillStyle = c;
-    ctx.fillRect(-8 * s, -10 * s, 16 * s, 20 * s);
+    ctx.fillRect(-8, -10, 16, 20);
     ctx.fillStyle = cl;
-    ctx.fillRect(-6 * s, -8 * s, 12 * s, 16 * s);
-    // Turret
+    ctx.fillRect(-6, -8, 12, 16);
     ctx.fillStyle = c;
-    ctx.fillRect(-5 * s, -7 * s, 10 * s, 10 * s);
+    ctx.fillRect(-5, -7, 10, 10);
     ctx.fillStyle = cl;
-    ctx.fillRect(-3 * s, -9 * s, 6 * s, 8 * s);
-    // Barrel
+    ctx.fillRect(-3, -9, 6, 8);
     ctx.fillStyle = c;
-    ctx.fillRect(-2 * s, -18 * s, 4 * s, 14 * s);
-    // Barrel tip
+    ctx.fillRect(-2, -18, 4, 14);
     ctx.fillStyle = tank.isPlayer ? '#a0e050' : '#e05050';
-    ctx.fillRect(-2 * s, -5 * s, 4 * s, 3 * s);
-    // Star badge
+    ctx.fillRect(-2, -5, 4, 3);
     if (tank.isPlayer) {
       ctx.fillStyle = '#f5c842';
-      ctx.fillRect(-2 * s, 3 * s, 4 * s, 4 * s);
+      ctx.fillRect(-2, 3, 4, 4);
     }
     ctx.restore();
   };
 
-  const drawBullet = (ctx: CanvasRenderingContext2D, b: Bullet) => {
-    ctx.fillStyle = b.fromPlayer ? COLORS.bullet : COLORS.bulletEnemy;
+  const drawBullet = (ctx: CanvasRenderingContext2D, b: Bullet, t: LevelTheme) => {
+    ctx.fillStyle = b.fromPlayer ? '#f5c842' : '#e05050';
     ctx.fillRect(b.x - 3, b.y - 5, 6, 10);
     ctx.fillStyle = 'white';
     ctx.fillRect(b.x - 1, b.y - 4, 2, 6);
   };
 
-  const drawExplosion = (ctx: CanvasRenderingContext2D, e: Explosion) => {
-    const t = e.frame / e.maxFrames;
-    const r = (t * 30) | 0;
-    const colors = [COLORS.explosion1, COLORS.explosion2, COLORS.explosion3];
+  const drawExplosion = (ctx: CanvasRenderingContext2D, e: Explosion, t: LevelTheme) => {
+    const progress = e.frame / e.maxFrames;
+    const r = (progress * 30) | 0;
+    const colors = [t.hudColor, '#e07820', '#e04040'];
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
-      const dist = r * (0.5 + Math.random() * 0.5);
+      const dist = r * (0.5 + 0.5);
       const px = e.x + Math.cos(angle) * dist;
       const py = e.y + Math.sin(angle) * dist;
-      const size = Math.max(2, (1 - t) * 8);
+      const size = Math.max(2, (1 - progress) * 8);
       ctx.fillStyle = colors[i % 3];
-      ctx.globalAlpha = 1 - t;
+      ctx.globalAlpha = 1 - progress;
       ctx.fillRect(px - size / 2, py - size / 2, size, size);
     }
     ctx.globalAlpha = 1;
-  };
-
-  const drawWall = (ctx: CanvasRenderingContext2D, w: Wall) => {
-    ctx.fillStyle = COLORS.wall;
-    ctx.fillRect(w.x, w.y, w.w, w.h);
-    ctx.fillStyle = COLORS.wallDark;
-    for (let row = 0; row * 8 < w.h; row++) {
-      const offset = row % 2 === 0 ? 0 : 8;
-      for (let col = -offset; col * 8 < w.w + 8; col++) {
-        ctx.fillRect(w.x + col * 16 + offset, w.y + row * 8, 14, 6);
-      }
-    }
-    ctx.strokeStyle = '#4a5a6a';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(w.x, w.y, w.w, w.h);
   };
 
   const render = useCallback(() => {
@@ -438,13 +505,15 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
     if (!ctx) return;
 
     // Background
-    ctx.fillStyle = COLORS.bg;
+    ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, width, height);
 
-    // Ground tiles
-    ctx.fillStyle = COLORS.ground;
+    // Ground
+    ctx.fillStyle = theme.ground;
     ctx.fillRect(0, 0, width, height);
-    ctx.strokeStyle = COLORS.groundGrid;
+
+    // Grid
+    ctx.strokeStyle = theme.groundGrid;
     ctx.lineWidth = 1;
     for (let x = 0; x < width; x += TILE) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
@@ -453,18 +522,21 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
     }
 
+    // Ground decorations
+    drawGroundDecoration(ctx, theme, width, height, s.level * 999);
+
     // Walls
-    s.walls.forEach(w => drawWall(ctx, w));
+    s.walls.forEach(w => drawWallThemed(ctx, w, theme));
 
     // Bullets
-    s.bullets.forEach(b => drawBullet(ctx, b));
+    s.bullets.forEach(b => drawBullet(ctx, b, theme));
 
     // Tanks
-    s.tanks.forEach(t => drawTank(ctx, t));
+    s.tanks.forEach(t2 => drawTank(ctx, t2, theme));
 
     // Explosions
-    s.explosions.forEach(e => drawExplosion(ctx, e));
-  }, [width, height]);
+    s.explosions.forEach(e => drawExplosion(ctx, e, theme));
+  }, [width, height, theme]);
 
   const loop = useCallback((time: number) => {
     const dt = Math.min((time - lastTimeRef.current) / 16, 3);
@@ -502,30 +574,35 @@ const GameEngine: React.FC<GameEngineProps> = ({ width, height, onGameOver, onVi
       />
       {/* HUD */}
       <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-3 pointer-events-none">
-        {/* Player HP */}
         <div className="flex flex-col gap-1">
-          <div className="font-pixel text-[8px] text-[var(--pixel-gold)]">HP</div>
-          <div className="health-bar" style={{ width: 120 }}>
+          <div className="font-pixel text-[8px]" style={{ color: theme.hudColor }}>HP</div>
+          <div className="health-bar" style={{ width: 120, borderColor: theme.hudColor }}>
             <div
               className={`health-fill ${hpPct < 30 ? 'health-fill-red' : ''}`}
-              style={{ width: `${Math.max(0, hpPct)}%` }}
+              style={{ width: `${Math.max(0, hpPct)}%`, background: hpPct < 30 ? '#e04040' : theme.playerLight }}
             />
           </div>
-          <div className="font-pixel text-[8px] text-[var(--pixel-light)]">{Math.max(0, hpDisplay)} / 100</div>
+          <div className="font-pixel text-[8px]" style={{ color: '#c8d8e8' }}>{Math.max(0, hpDisplay)} / 100</div>
         </div>
 
-        {/* Score + Kills */}
+        {/* Level badge */}
+        <div className="flex flex-col items-center gap-1">
+          <div className="font-pixel text-[8px]" style={{ color: theme.hudColor, textShadow: `0 0 8px ${theme.hudColor}` }}>
+            {theme.label}
+          </div>
+        </div>
+
         <div className="flex flex-col items-end gap-1">
-          <div className="font-pixel text-[8px] text-[var(--pixel-gold)]">SCORE: {scoreDisplay}</div>
-          <div className="font-pixel text-[8px] text-[var(--pixel-red)]">KILLS: {killDisplay}/{totalDisplay}</div>
-          <div className="font-pixel text-[8px] text-[var(--pixel-light)]">LVL {level}</div>
+          <div className="font-pixel text-[8px]" style={{ color: theme.hudColor }}>SCORE: {scoreDisplay}</div>
+          <div className="font-pixel text-[8px]" style={{ color: '#e05050' }}>KILLS: {killDisplay}/{totalDisplay}</div>
+          <div className="font-pixel text-[8px]" style={{ color: '#c8d8e8' }}>LVL {level}</div>
         </div>
       </div>
 
       {/* Controls hint */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-4 pointer-events-none">
-        <span className="font-vt323 text-lg text-[var(--pixel-light)] opacity-60">WASD / ↑↓←→ движение</span>
-        <span className="font-vt323 text-lg text-[var(--pixel-gold)] opacity-60">SPACE / Z — огонь</span>
+        <span className="font-vt323 text-lg opacity-50" style={{ color: '#c8d8e8' }}>WASD/↑↓←→ — движение</span>
+        <span className="font-vt323 text-lg opacity-50" style={{ color: theme.hudColor }}>SPACE — огонь</span>
       </div>
     </div>
   );
