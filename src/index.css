@@ -4,98 +4,324 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 8%;
+    --foreground: 60 100% 85%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 20% 12%;
+    --card-foreground: 60 100% 85%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 20% 12%;
+    --popover-foreground: 60 100% 85%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 45 100% 55%;
+    --primary-foreground: 220 20% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 160 60% 35%;
+    --secondary-foreground: 60 100% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 20% 18%;
+    --muted-foreground: 60 30% 60%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 80% 55%;
+    --accent-foreground: 60 100% 95%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 60 100% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 20% 22%;
+    --input: 220 20% 18%;
+    --ring: 45 100% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Game colors */
+    --pixel-gold: #f5c842;
+    --pixel-green: #3dba6f;
+    --pixel-red: #e04040;
+    --pixel-blue: #4090e0;
+    --pixel-dark: #0d1117;
+    --pixel-darker: #080c10;
+    --pixel-gray: #2a3040;
+    --pixel-light: #c8d8e8;
+    --pixel-orange: #e07820;
+    --pixel-health: #3dba6f;
+    --pixel-enemy: #e04040;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    image-rendering: pixelated;
   }
 
   body {
     @apply bg-background text-foreground;
+    font-family: "VT323", monospace;
+    background-color: var(--pixel-dark);
+    overflow: hidden;
   }
+}
+
+/* Pixel font */
+.font-pixel {
+  font-family: "Press Start 2P", monospace;
+}
+
+.font-vt323 {
+  font-family: "VT323", monospace;
+}
+
+/* Pixel border */
+.pixel-border {
+  border: 4px solid var(--pixel-gold);
+  box-shadow:
+    inset 0 0 0 2px var(--pixel-darker),
+    4px 4px 0 0 rgba(0, 0, 0, 0.8);
+}
+
+.pixel-border-green {
+  border: 4px solid var(--pixel-green);
+  box-shadow:
+    inset 0 0 0 2px var(--pixel-darker),
+    4px 4px 0 0 rgba(0, 0, 0, 0.8);
+}
+
+.pixel-border-red {
+  border: 4px solid var(--pixel-red);
+  box-shadow:
+    inset 0 0 0 2px var(--pixel-darker),
+    4px 4px 0 0 rgba(0, 0, 0, 0.8);
+}
+
+/* Pixel button */
+.pixel-btn {
+  font-family: "Press Start 2P", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  border: 3px solid var(--pixel-gold);
+  background: var(--pixel-gray);
+  color: var(--pixel-gold);
+  padding: 12px 24px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.05s;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.pixel-btn:hover {
+  background: var(--pixel-gold);
+  color: var(--pixel-darker);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+  transform: translate(2px, 2px);
+}
+
+.pixel-btn:active {
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.8);
+  transform: translate(4px, 4px);
+}
+
+.pixel-btn-red {
+  border-color: var(--pixel-red);
+  color: var(--pixel-red);
+}
+.pixel-btn-red:hover {
+  background: var(--pixel-red);
+  color: white;
+}
+
+.pixel-btn-green {
+  border-color: var(--pixel-green);
+  color: var(--pixel-green);
+}
+.pixel-btn-green:hover {
+  background: var(--pixel-green);
+  color: white;
+}
+
+/* Scanlines effect */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* CRT glow */
+.crt-glow {
+  text-shadow:
+    0 0 8px currentColor,
+    0 0 16px currentColor;
+}
+
+/* Pixel grid background */
+.pixel-bg {
+  background-color: var(--pixel-darker);
+  background-image:
+    linear-gradient(rgba(61, 186, 111, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61, 186, 111, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Health bar */
+.health-bar {
+  height: 16px;
+  background: var(--pixel-gray);
+  border: 2px solid var(--pixel-gold);
+  position: relative;
+  overflow: hidden;
+}
+
+.health-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pixel-green), #5de88a);
+  transition: width 0.15s steps(4);
+}
+
+.health-fill-red {
+  background: linear-gradient(90deg, var(--pixel-red), #ff6060);
+}
+
+/* Pixel tank canvas */
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Blink animation */
+@keyframes pixel-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.pixel-blink {
+  animation: pixel-blink 0.8s steps(1) infinite;
+}
+
+/* Title animation */
+@keyframes title-flicker {
+  0%,
+  95%,
+  100% {
+    opacity: 1;
+    text-shadow:
+      0 0 10px var(--pixel-gold),
+      0 0 20px var(--pixel-gold);
+  }
+  96% {
+    opacity: 0.7;
+    text-shadow: none;
+  }
+}
+
+.title-flicker {
+  animation: title-flicker 4s infinite;
+}
+
+/* Float animation for menu */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.float-anim {
+  animation: float-y 2s ease-in-out infinite;
+}
+
+/* Explosion animation */
+@keyframes explode {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+.explosion {
+  animation: explode 0.4s ease-out forwards;
+}
+
+/* Slide in from bottom */
+@keyframes slide-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
+/* Stars background */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Shake on hit */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.shake {
+  animation: shake 0.2s ease-in-out;
+}
+
+/* Menu selector arrow */
+@keyframes arrow-blink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateX(4px);
+  }
+}
+
+.arrow-blink {
+  animation: arrow-blink 0.6s steps(2) infinite;
 }
