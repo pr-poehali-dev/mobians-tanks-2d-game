@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { getLevelTheme, type LevelTheme } from './levelThemes';
+import { getLevelTheme, isBossLevel, getEnemyCount, type LevelTheme } from './levelThemes';
 import { type MobianCharacter, CHARACTERS } from './CharacterSelect';
+import { type LoadoutConfig, DEFAULT_LOADOUT } from './EquipmentSelect';
 
 export interface Tank {
   id: string;
@@ -18,6 +19,12 @@ export interface Tank {
   charId?: string;
   invisible?: number;
   slowAura?: number;
+  isBoss?: boolean;
+  bossPhase?: number;
+  skinBodyColor?: string;
+  skinLightColor?: string;
+  skinAccentColor?: string;
+  skinTrackColor?: string;
 }
 
 export interface Bullet {
@@ -82,6 +89,7 @@ interface GameEngineProps {
   level: number;
   character?: MobianCharacter;
   gameMode?: 'quest' | 'battle';
+  loadout?: LoadoutConfig;
 }
 
 const TILE = 32;
@@ -163,31 +171,72 @@ function generateLevel(level: number, W: number, H: number) {
     }
   }
 
-  const enemyCount = 2 + level * 2;
+  const isBoss = isBossLevel(level);
+  const enemyCount = getEnemyCount(level);
   const enemies: Tank[] = [];
   const enemyCharIds = CHARACTERS.filter(c => c.id !== 'sonic').map(c => c.id);
-  for (let i = 0; i < enemyCount; i++) {
-    let ex = 0, ey = 0;
-    for (let a = 0; a < 50; a++) {
-      ex = borderThick + TILE + Math.random() * (W - borderThick * 2 - TILE * 2);
-      ey = borderThick + TILE + Math.random() * (H - borderThick * 2 - TILE * 2);
-      const farFromPlayer = ex > 280 || ey > 280;
-      const noWall = !walls.some(w => ex > w.x - TILE && ex < w.x + w.w + TILE && ey > w.y - TILE && ey < w.y + w.h + TILE);
-      if (farFromPlayer && noWall) break;
-    }
+
+  if (isBoss) {
+    // Босс в центре карты
+    const bossHp = 300 + level * 20;
+    const bossChar = enemyCharIds[(Math.floor(level / 10) - 1) % enemyCharIds.length];
     enemies.push({
-      id: `enemy-${i}`,
-      x: ex, y: ey,
-      rotation: Math.random() * 360,
-      hp: 60 + level * 10,
-      maxHp: 60 + level * 10,
+      id: 'boss-0',
+      x: W / 2, y: H / 2,
+      rotation: 0,
+      hp: bossHp, maxHp: bossHp,
       isPlayer: false,
       vx: 0, vy: 0,
-      shootCooldown: Math.random() * 120,
+      shootCooldown: 20,
       aiTimer: 0,
-      aiTargetAngle: Math.random() * 360,
-      charId: enemyCharIds[i % enemyCharIds.length],
+      aiTargetAngle: 0,
+      charId: bossChar,
+      isBoss: true,
+      bossPhase: 1,
     });
+    // Дополнительные миньоны-охранники (2 штуки)
+    for (let g = 0; g < 2; g++) {
+      const angle = (g / 2) * Math.PI * 2;
+      const gx = W / 2 + Math.cos(angle) * 100;
+      const gy = H / 2 + Math.sin(angle) * 100;
+      enemies.push({
+        id: `boss-guard-${g}`,
+        x: gx, y: gy,
+        rotation: Math.random() * 360,
+        hp: 80 + level * 5,
+        maxHp: 80 + level * 5,
+        isPlayer: false,
+        vx: 0, vy: 0,
+        shootCooldown: Math.random() * 60,
+        aiTimer: 0,
+        aiTargetAngle: Math.random() * 360,
+        charId: enemyCharIds[g % enemyCharIds.length],
+      });
+    }
+  } else {
+    for (let i = 0; i < enemyCount; i++) {
+      let ex = 0, ey = 0;
+      for (let a = 0; a < 50; a++) {
+        ex = borderThick + TILE + Math.random() * (W - borderThick * 2 - TILE * 2);
+        ey = borderThick + TILE + Math.random() * (H - borderThick * 2 - TILE * 2);
+        const farFromPlayer = ex > 280 || ey > 280;
+        const noWall = !walls.some(w => ex > w.x - TILE && ex < w.x + w.w + TILE && ey > w.y - TILE && ey < w.y + w.h + TILE);
+        if (farFromPlayer && noWall) break;
+      }
+      enemies.push({
+        id: `enemy-${i}`,
+        x: ex, y: ey,
+        rotation: Math.random() * 360,
+        hp: 60 + level * 8,
+        maxHp: 60 + level * 8,
+        isPlayer: false,
+        vx: 0, vy: 0,
+        shootCooldown: Math.random() * 120,
+        aiTimer: 0,
+        aiTargetAngle: Math.random() * 360,
+        charId: enemyCharIds[i % enemyCharIds.length],
+      });
+    }
   }
 
   // pickups
@@ -204,7 +253,8 @@ function generateLevel(level: number, W: number, H: number) {
     pickups.push({ id: `pickup-${i}`, x: px, y: py, type: pickupTypes[i % 3], life: 600 });
   }
 
-  return { walls, enemies, enemyCount, pickups };
+  const totalEnemies = isBoss ? 1 + 2 : enemyCount; // boss + guards, or normal
+  return { walls, enemies, enemyCount: totalEnemies, pickups, isBoss };
 }
 
 function rectCircle(rx: number, ry: number, rw: number, rh: number, cx: number, cy: number, cr: number) {
@@ -472,7 +522,7 @@ function drawMobianHeadCanvas(
 // ─── Main Component ───────────────────────────────────────────────────────────
 const GameEngine: React.FC<GameEngineProps> = ({
   width, height, onGameOver, onVictory, settings, level,
-  character, gameMode = 'battle',
+  character, gameMode = 'battle', loadout = DEFAULT_LOADOUT,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const radarRef = useRef<HTMLCanvasElement>(null);
@@ -484,6 +534,10 @@ const GameEngine: React.FC<GameEngineProps> = ({
   const explosionIdRef = useRef(0);
   const theme = getLevelTheme(level);
   const char = character ?? CHARACTERS[0];
+  const skin = loadout.skin;
+  const weaponEquip = loadout.weapon;
+  const armorEquip = loadout.armor;
+  const engineEquip = loadout.engine;
 
   const [hpDisplay, setHpDisplay] = useState(100);
   const [scoreDisplay, setScoreDisplay] = useState(0);
@@ -492,14 +546,20 @@ const GameEngine: React.FC<GameEngineProps> = ({
   const [timeDisplay, setTimeDisplay] = useState(QUEST_TIME);
   const [shieldDisplay, setShieldDisplay] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [isBossLevel_, setIsBossLevel] = useState(false);
   const pausedRef = useRef(false);
 
-  const playerSpeed = 2 + (char.speed / 10) * 1.5;
-  const playerDamage = BULLET_DAMAGE * (0.7 + (char.power / 10) * 0.6);
-  const playerMaxHp = Math.round(80 + (char.armor / 10) * 40);
+  // Equipment modifiers
+  const speedMult = 1 + (engineEquip.bonusSpeed / 100) + (weaponEquip.bonusSpeed / 100) + (armorEquip.bonusSpeed / 100);
+  const damageMult = 1 + (weaponEquip.bonusDamage / 100);
+  const armorMult = 1 + (armorEquip.bonusArmor / 100);
+  const playerSpeed = (2 + (char.speed / 10) * 1.5) * Math.max(0.5, speedMult);
+  const playerDamage = BULLET_DAMAGE * (0.7 + (char.power / 10) * 0.6) * damageMult;
+  const playerMaxHp = Math.round((80 + (char.armor / 10) * 40) * Math.max(0.5, armorMult));
 
   const initGame = useCallback(() => {
-    const { walls, enemies, enemyCount, pickups } = generateLevel(level, width, height);
+    const { walls, enemies, enemyCount, pickups, isBoss } = generateLevel(level, width, height);
+    setIsBossLevel(!!isBoss);
     const player: Tank = {
       id: 'player',
       x: 80, y: 80,
@@ -587,19 +647,40 @@ const GameEngine: React.FC<GameEngineProps> = ({
         trailX: [], trailY: [],
       });
     } else {
+      // Apply weapon equipment special for non-special-characters
+      const wSpecial = tank.isPlayer ? weaponEquip.bonusSpecial : undefined;
+      const bSpecial = (wSpecial === 'phase' || wSpecial === 'explode' || wSpecial === 'trail') ? wSpecial as Bullet['special'] : undefined;
       s.bullets.push({
         id: `b-${bulletIdRef.current++}`,
         x: bx, y: by,
-        vx: Math.cos(rad) * BULLET_SPEED,
-        vy: Math.sin(rad) * BULLET_SPEED,
+        vx: Math.cos(rad) * BULLET_SPEED * (tank.isBoss ? 1.2 : 1),
+        vy: Math.sin(rad) * BULLET_SPEED * (tank.isBoss ? 1.2 : 1),
         fromPlayer: tank.isPlayer, life: 120,
+        special: bSpecial,
+        trailX: bSpecial === 'trail' ? [] : undefined,
+        trailY: bSpecial === 'trail' ? [] : undefined,
       });
     }
 
+    // Equipment: rapid fire
+    const rapidBonus = tank.isPlayer && weaponEquip.bonusSpecial === 'rapid' ? 0.7 : 1;
     const cooldown = tank.isPlayer
-      ? Math.round(30 * (1 - (char.speed - 5) * 0.04))
-      : 80 + Math.random() * 40;
-    tank.shootCooldown = Math.max(10, cooldown);
+      ? Math.round(30 * (1 - (char.speed - 5) * 0.04) * rapidBonus)
+      : (tank.isBoss ? 30 + Math.random() * 20 : 80 + Math.random() * 40);
+    tank.shootCooldown = Math.max(8, cooldown);
+
+    // Equipment: double shot (only for non-tails, since tails already shoots double)
+    if (tank.isPlayer && char.id !== 'tails' && weaponEquip.bonusSpecial === 'double') {
+      const offset = 8;
+      const perpRad = rad + Math.PI / 2;
+      s.bullets.push({
+        id: `b-${bulletIdRef.current++}`,
+        x: bx + Math.cos(perpRad) * offset, y: by + Math.sin(perpRad) * offset,
+        vx: Math.cos(rad) * BULLET_SPEED,
+        vy: Math.sin(rad) * BULLET_SPEED,
+        fromPlayer: true, life: 120,
+      });
+    }
   };
 
   const update = useCallback((dt: number) => {
@@ -662,40 +743,62 @@ const GameEngine: React.FC<GameEngineProps> = ({
     for (const tank of s.tanks) {
       if (!tank.isPlayer) {
         const isSlowed = player.slowAura && Math.hypot(player.x - tank.x, player.y - tank.y) < 200;
-        const aiSpeed = isSlowed ? SPEED * 0.3 : SPEED * 0.8;
+        const bossSpeedMult = tank.isBoss ? 1.3 : 1;
+        const aiSpeed = isSlowed ? SPEED * 0.3 : SPEED * 0.8 * bossSpeedMult;
         const isBlind = player.invisible && player.invisible > 0 && Math.hypot(player.x - tank.x, player.y - tank.y) > 80;
+
+        // Boss phase 2: after 50% hp, becomes more aggressive
+        if (tank.isBoss && tank.hp < tank.maxHp * 0.5 && tank.bossPhase === 1) {
+          tank.bossPhase = 2;
+        }
+        const bossPhase2 = tank.isBoss && tank.bossPhase === 2;
 
         tank.aiTimer -= dt;
         if (tank.aiTimer <= 0) {
-          tank.aiTimer = 60 + Math.random() * 100;
+          tank.aiTimer = bossPhase2 ? 20 + Math.random() * 30 : (tank.isBoss ? 30 + Math.random() * 50 : 60 + Math.random() * 100);
           if (!isBlind) {
             const dx = player.x - tank.x;
             const dy = player.y - tank.y;
             const angleToPlayer = Math.atan2(dy, dx) * 180 / Math.PI + 90;
-            tank.aiTargetAngle = angleToPlayer + (Math.random() - 0.5) * 50;
+            tank.aiTargetAngle = angleToPlayer + (Math.random() - 0.5) * (tank.isBoss ? 15 : 50);
           } else {
             tank.aiTargetAngle = tank.rotation + (Math.random() - 0.5) * 120;
           }
         }
         const diff = ((tank.aiTargetAngle - tank.rotation + 540) % 360) - 180;
-        const rotSpeed = isSlowed ? 1 : 2.5;
+        const rotSpeed = isSlowed ? 1 : (tank.isBoss ? 4 : 2.5);
         tank.rotation += Math.sign(diff) * Math.min(Math.abs(diff), rotSpeed);
 
         const dist = Math.hypot(player.x - tank.x, player.y - tank.y);
-        if (dist > 100 && !isBlind) {
+        const chaseRange = tank.isBoss ? 600 : 100;
+        if (dist > chaseRange && !isBlind) {
           const rad = (tank.rotation - 90) * Math.PI / 180;
           tank.vx = Math.cos(rad) * aiSpeed;
           tank.vy = Math.sin(rad) * aiSpeed;
-        } else {
+        } else if (!tank.isBoss) {
           tank.vx *= 0.85; tank.vy *= 0.85;
+        } else {
+          // Boss orbits player
+          const orbitRad = (tank.rotation - 90 + 90) * Math.PI / 180;
+          tank.vx = Math.cos(orbitRad) * aiSpeed;
+          tank.vy = Math.sin(orbitRad) * aiSpeed;
         }
 
+        const aimThreshold = tank.isBoss ? 25 : 12;
+        const shootRange = tank.isBoss ? 700 : 480;
         if (tank.shootCooldown <= 0 && !isBlind) {
           const dx = player.x - tank.x;
           const dy = player.y - tank.y;
           const angleToPlayer = Math.atan2(dy, dx) * 180 / Math.PI + 90;
           const aimDiff = Math.abs(((angleToPlayer - tank.rotation + 540) % 360) - 180);
-          if (aimDiff < 12 && dist < 480) shoot(tank, s);
+          if (aimDiff < aimThreshold && dist < shootRange) {
+            shoot(tank, s);
+            // Boss phase 2: triple shot burst
+            if (bossPhase2) {
+              setTimeout(() => shoot(tank, s), 100);
+              setTimeout(() => shoot(tank, s), 200);
+            }
+          }
         }
         if (tank.shootCooldown > 0) tank.shootCooldown -= dt;
       }
@@ -801,9 +904,11 @@ const GameEngine: React.FC<GameEngineProps> = ({
 
   const drawTank = (ctx: CanvasRenderingContext2D, tank: Tank, t: LevelTheme) => {
     const tankChar = tank.isPlayer ? char : (CHARACTERS.find(c => c.id === tank.charId) ?? CHARACTERS[2]);
-    const c = tank.isPlayer ? char.tankColor : tankChar.tankColor;
-    const cl = tank.isPlayer ? char.tankLight : tankChar.tankLight;
-    const trackBase = tank.isPlayer ? char.colorDark : tankChar.colorDark;
+    // Use skin colors for player, or boss colors for boss
+    const c = tank.isPlayer ? (skin.id !== 'classic' ? skin.bodyColor : char.tankColor) : (tank.isBoss ? '#800000' : tankChar.tankColor);
+    const cl = tank.isPlayer ? (skin.id !== 'classic' ? skin.lightColor : char.tankLight) : (tank.isBoss ? '#c00000' : tankChar.tankLight);
+    const trackBase = tank.isPlayer ? (skin.id !== 'classic' ? skin.trackColor : char.colorDark) : (tank.isBoss ? '#400000' : tankChar.colorDark);
+    const accentOverride = tank.isPlayer && skin.id !== 'classic' ? skin.accentColor : null;
 
     ctx.save();
     ctx.translate(tank.x, tank.y);
@@ -846,27 +951,41 @@ const GameEngine: React.FC<GameEngineProps> = ({
     ctx.fillRect(-4, -11, 8, 9);
     ctx.fillStyle = c;
     ctx.fillRect(-2, -20, 4, 14);
-    // barrel tip — character accent
-    ctx.fillStyle = tankChar.accentColor;
+    // barrel tip — character accent (or skin accent)
+    ctx.fillStyle = accentOverride ?? tankChar.accentColor;
     ctx.fillRect(-2, -22, 4, 4);
     // star/emblem
-    ctx.fillStyle = tankChar.accentColor;
+    ctx.fillStyle = accentOverride ?? tankChar.accentColor;
     ctx.globalAlpha = (ctx.globalAlpha === 0.35 ? 0.2 : 0.7);
     ctx.fillRect(-2, 2, 4, 4);
     ctx.globalAlpha = 1;
 
+    // Boss extra size indicator (bigger hull outline)
+    if (tank.isBoss) {
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-12, -14, 24, 28);
+    }
+
     ctx.restore();
 
-    // HP bar
+    // HP bar — boss has wider bar
     const hpPct = tank.hp / tank.maxHp;
-    const barW = 28;
+    const barW = tank.isBoss ? 50 : 28;
     ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(tank.x - barW / 2, tank.y - 28, barW, 4);
-    ctx.fillStyle = hpPct > 0.5 ? '#60d030' : hpPct > 0.25 ? '#f5c842' : '#e03030';
-    ctx.fillRect(tank.x - barW / 2, tank.y - 28, barW * Math.max(0, hpPct), 4);
+    ctx.fillRect(tank.x - barW / 2, tank.y - (tank.isBoss ? 38 : 28), barW, tank.isBoss ? 6 : 4);
+    ctx.fillStyle = tank.isBoss ? (hpPct > 0.5 ? '#e04040' : '#ff8000') : (hpPct > 0.5 ? '#60d030' : hpPct > 0.25 ? '#f5c842' : '#e03030');
+    ctx.fillRect(tank.x - barW / 2, tank.y - (tank.isBoss ? 38 : 28), barW * Math.max(0, hpPct), tank.isBoss ? 6 : 4);
+
+    if (tank.isBoss) {
+      ctx.fillStyle = '#ff4040';
+      ctx.font = '6px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('BOSS', tank.x, tank.y - 42);
+    }
 
     // Draw head on top of tank
-    const headScale = tank.isPlayer ? 1.1 : 0.85;
+    const headScale = tank.isBoss ? 1.6 : (tank.isPlayer ? 1.1 : 0.85);
     drawMobianHeadCanvas(ctx, tankChar, tank.x, tank.y - 6, headScale);
   };
 
@@ -1110,6 +1229,19 @@ const GameEngine: React.FC<GameEngineProps> = ({
 
         {/* Center — Level + Quest timer */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+          {isBossLevel_ && (
+            <div style={{
+              fontFamily: '"Press Start 2P", monospace', fontSize: 8,
+              color: '#ff2020',
+              textShadow: '0 0 12px #ff2020',
+              animation: 'pixel-blink 0.5s steps(1) infinite',
+              padding: '2px 6px',
+              border: '2px solid #ff2020',
+              background: 'rgba(30,0,0,0.85)',
+            }}>
+              ☠ БОСС УРОВЕНЬ ☠
+            </div>
+          )}
           <div className="font-pixel text-[7px]" style={{ color: theme.hudColor, textShadow: `0 0 8px ${theme.hudColor}` }}>
             {theme.label}
           </div>
