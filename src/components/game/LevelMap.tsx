@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { buildLevelConfigs, THEMES, type LevelConfig } from './levelThemes';
+import { type MobianCharacter } from './CharacterSelect';
 
 interface LevelMapProps {
   maxUnlocked: number;
   onSelectLevel: (level: number) => void;
   onBack: () => void;
+  character?: MobianCharacter;
+  gameMode?: 'quest' | 'battle';
 }
 
 const COLS = 5;
@@ -137,7 +140,7 @@ const LevelNode: React.FC<{
   );
 };
 
-const LevelMap: React.FC<LevelMapProps> = ({ maxUnlocked, onSelectLevel, onBack }) => {
+const LevelMap: React.FC<LevelMapProps> = ({ maxUnlocked, onSelectLevel, onBack, character, gameMode }) => {
   const configs = buildLevelConfigs(maxUnlocked);
   const [selected, setSelected] = useState(maxUnlocked - 1);
 
@@ -338,10 +341,39 @@ const LevelMap: React.FC<LevelMapProps> = ({ maxUnlocked, onSelectLevel, onBack 
         </div>
 
         {/* Bottom nav */}
-        <div className="flex gap-4 justify-center mt-2">
+        <div className="flex gap-4 justify-center mt-2 items-center">
           <button onClick={onBack} className="pixel-btn pixel-btn-red" style={{ fontSize: 8 }}>
-            ← МЕНЮ
+            ← НАЗАД
           </button>
+          {character && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'rgba(8,12,20,0.9)',
+              border: `2px solid ${character.color}`,
+              padding: '4px 10px',
+            }}>
+              <div style={{
+                width: 20, height: 20,
+                background: character.colorDark,
+                border: `1px solid ${character.color}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: '"Press Start 2P", monospace', fontSize: 5, color: character.accentColor,
+              }}>
+                {character.name.slice(0, 2).toUpperCase()}
+              </div>
+              <span style={{ fontFamily: '"Press Start 2P", monospace', fontSize: 6, color: character.accentColor }}>
+                {character.name}
+              </span>
+              <span style={{
+                fontFamily: '"Press Start 2P", monospace', fontSize: 5,
+                color: gameMode === 'quest' ? '#4abaff' : '#f5c842',
+                padding: '2px 4px',
+                background: gameMode === 'quest' ? 'rgba(74,186,255,0.15)' : 'rgba(245,200,66,0.15)',
+              }}>
+                {gameMode === 'quest' ? '⏱ КВЕСТ' : '🤖 БОЙ'}
+              </span>
+            </div>
+          )}
           <div className="font-vt323 text-xl flex items-center" style={{ color: 'var(--pixel-light)', opacity: 0.5 }}>
             ←→ выбор  &nbsp; ENTER — играть
           </div>

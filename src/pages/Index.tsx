@@ -4,6 +4,7 @@ import GameEngine from '@/components/game/GameEngine';
 import SettingsScreen, { GameSettings } from '@/components/game/SettingsScreen';
 import ResultScreen from '@/components/game/ResultScreen';
 import LevelMap from '@/components/game/LevelMap';
+import CharacterSelect, { type MobianCharacter, CHARACTERS } from '@/components/game/CharacterSelect';
 
 const FpsCounter: React.FC = () => {
   const [fps, setFps] = useState(0);
@@ -40,7 +41,7 @@ const FpsCounter: React.FC = () => {
   );
 };
 
-type Screen = 'menu' | 'levelmap' | 'game' | 'settings' | 'result';
+type Screen = 'menu' | 'charselect' | 'levelmap' | 'game' | 'settings' | 'result';
 
 interface ResultData {
   score: number;
@@ -70,6 +71,8 @@ const Index: React.FC = () => {
   const [maxUnlocked, setMaxUnlocked] = useState(10);
   const [result, setResult] = useState<ResultData | null>(null);
   const [gameKey, setGameKey] = useState(0);
+  const [selectedCharacter, setSelectedCharacter] = useState<MobianCharacter>(CHARACTERS[0]);
+  const [gameMode, setGameMode] = useState<'quest' | 'battle'>('battle');
 
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
 
@@ -111,7 +114,14 @@ const Index: React.FC = () => {
     setScreen('menu');
   };
 
+  // From main menu → char select → level map → game
   const handleStart = () => {
+    setScreen('charselect');
+  };
+
+  const handleCharSelect = (char: MobianCharacter, mode: 'quest' | 'battle') => {
+    setSelectedCharacter(char);
+    setGameMode(mode);
     setScreen('levelmap');
   };
 
@@ -147,12 +157,23 @@ const Index: React.FC = () => {
           </div>
         )}
 
+        {screen === 'charselect' && (
+          <div className="w-full h-full animate-fade-in">
+            <CharacterSelect
+              onSelect={handleCharSelect}
+              onBack={() => setScreen('menu')}
+            />
+          </div>
+        )}
+
         {screen === 'levelmap' && (
           <div className="w-full h-full animate-fade-in">
             <LevelMap
               maxUnlocked={maxUnlocked}
               onSelectLevel={handleSelectLevel}
-              onBack={() => setScreen('menu')}
+              onBack={() => setScreen('charselect')}
+              character={selectedCharacter}
+              gameMode={gameMode}
             />
           </div>
         )}
@@ -167,6 +188,8 @@ const Index: React.FC = () => {
               onVictory={handleVictory}
               settings={{ sfx: settings.sfx, pixelSize: settings.pixelSize }}
               level={currentLevel}
+              character={selectedCharacter}
+              gameMode={gameMode}
             />
           </div>
         )}
