@@ -1,9 +1,44 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import MainMenu from '@/components/game/MainMenu';
 import GameEngine from '@/components/game/GameEngine';
 import SettingsScreen, { GameSettings } from '@/components/game/SettingsScreen';
 import ResultScreen from '@/components/game/ResultScreen';
 import LevelMap from '@/components/game/LevelMap';
+
+const FpsCounter: React.FC = () => {
+  const [fps, setFps] = useState(0);
+  const framesRef = useRef(0);
+  const lastRef = useRef(performance.now());
+  useEffect(() => {
+    let raf: number;
+    const tick = () => {
+      framesRef.current++;
+      const now = performance.now();
+      if (now - lastRef.current >= 1000) {
+        setFps(framesRef.current);
+        framesRef.current = 0;
+        lastRef.current = now;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <div
+      style={{
+        position: 'absolute', top: 4, right: 4, zIndex: 200,
+        fontFamily: '"Press Start 2P", monospace', fontSize: 7,
+        color: fps >= 55 ? '#a0e050' : fps >= 30 ? '#f5c842' : '#e05050',
+        background: 'rgba(0,0,0,0.7)', padding: '3px 6px',
+        border: '1px solid rgba(245,200,66,0.3)',
+        pointerEvents: 'none',
+      }}
+    >
+      {fps} FPS
+    </div>
+  );
+};
 
 type Screen = 'menu' | 'levelmap' | 'game' | 'settings' | 'result';
 
@@ -18,8 +53,11 @@ const DEFAULT_SETTINGS: GameSettings = {
   sfx: 7,
   music: 5,
   pixelSize: 2,
-  controls: 'wasd',
+  controls: 'both',
   difficulty: 'normal',
+  scanlines: true,
+  brightness: 8,
+  showFps: false,
 };
 
 const GAME_W = 800;
@@ -29,7 +67,7 @@ const Index: React.FC = () => {
   const [screen, setScreen] = useState<Screen>('menu');
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [currentLevel, setCurrentLevel] = useState(1);
-  const [maxUnlocked, setMaxUnlocked] = useState(1);
+  const [maxUnlocked, setMaxUnlocked] = useState(10);
   const [result, setResult] = useState<ResultData | null>(null);
   const [gameKey, setGameKey] = useState(0);
 
@@ -67,6 +105,12 @@ const Index: React.FC = () => {
     setScreen('game');
   };
 
+  const handleResetProgress = () => {
+    setMaxUnlocked(10);
+    setCurrentLevel(1);
+    setScreen('menu');
+  };
+
   const handleStart = () => {
     setScreen('levelmap');
   };
@@ -90,6 +134,7 @@ const Index: React.FC = () => {
           transformOrigin: 'center center',
           position: 'relative',
           overflow: 'hidden',
+          filter: `brightness(${0.4 + settings.brightness * 0.07})`,
         }}
       >
         {screen === 'menu' && (
@@ -126,12 +171,27 @@ const Index: React.FC = () => {
           </div>
         )}
 
+        {/* Global scanlines overlay */}
+        {settings.scanlines && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px)',
+              zIndex: 40,
+            }}
+          />
+        )}
+
+        {/* FPS counter */}
+        {settings.showFps && <FpsCounter />}
+
         {screen === 'settings' && (
           <div className="w-full h-full animate-fade-in">
             <SettingsScreen
               settings={settings}
               onSave={setSettings}
               onBack={() => setScreen('menu')}
+              onResetProgress={handleResetProgress}
             />
           </div>
         )}

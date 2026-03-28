@@ -116,15 +116,15 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onSettings, onQuit }) => {
 
       <div className="relative z-10 flex flex-col items-center justify-center h-full gap-6">
         {/* Title */}
-        <div className="flex flex-col items-center gap-3 mb-4">
+        <div className="flex flex-col items-center gap-2 mb-4">
           <div
-            className="font-pixel text-center leading-relaxed"
+            className="font-pixel text-center leading-loose"
             style={{
-              fontSize: 'clamp(14px, 3vw, 24px)',
+              fontSize: 20,
               color: 'var(--pixel-gold)',
-              textShadow: '0 0 12px var(--pixel-gold), 0 0 24px rgba(245,200,66,0.4)',
+              textShadow: '0 0 14px var(--pixel-gold), 0 0 28px rgba(245,200,66,0.5)',
               animation: 'title-flicker 5s infinite',
-              letterSpacing: '2px',
+              letterSpacing: '3px',
             }}
           >
             MOBIANS
@@ -132,25 +132,37 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onSettings, onQuit }) => {
           <div
             className="font-pixel text-center"
             style={{
-              fontSize: 'clamp(8px, 1.5vw, 12px)',
+              fontSize: 11,
               color: 'var(--pixel-light)',
-              letterSpacing: '6px',
-              opacity: 0.8,
+              letterSpacing: '8px',
+              opacity: 0.7,
             }}
           >
             UND
           </div>
           <div
-            className="font-pixel text-center leading-relaxed"
+            className="font-pixel text-center leading-loose"
             style={{
-              fontSize: 'clamp(14px, 3vw, 24px)',
+              fontSize: 20,
               color: 'var(--pixel-red)',
-              textShadow: '0 0 12px var(--pixel-red), 0 0 24px rgba(224,64,64,0.4)',
+              textShadow: '0 0 14px var(--pixel-red), 0 0 28px rgba(224,64,64,0.5)',
               animation: 'title-flicker 5s infinite 0.3s',
-              letterSpacing: '2px',
+              letterSpacing: '3px',
             }}
           >
             TANKS
+          </div>
+          <div
+            className="font-pixel text-center mt-1"
+            style={{
+              fontSize: 7,
+              color: 'var(--pixel-light)',
+              letterSpacing: '4px',
+              opacity: 0.45,
+              textTransform: 'uppercase',
+            }}
+          >
+            — пиксельная танковая война —
           </div>
         </div>
 
